@@ -9,7 +9,7 @@ This is a ebpf-based sandbox PoC operating at the library level, in contrast to 
 ⚠️ 
 - This project was not tested yet for heavy multithreading and concurrency. It will be done soon. I plan to test java and other languages as well
 when I have some time. Also, do not use it in production, **this is a PoC**!!! 😏.
-- If you don't start tracing you program from the start, it will generate false positives. 
+- If you don't start tracing you program from the start, it may generate false positives. 
 
 # Environment 
 

@@ -1,0 +1,51 @@
+#!/usr/bin/env bpftrace
+
+BEGIN {
+    printf("🕵🏻profiling starting... hit Ctrl-C to quit\n");
+    @max_depth = 100;
+}
+
+usdt:/workspace/Python-3.10.0/python:function__entry {
+    if (@current_depth[tid] < @max_depth) {
+        @current_depth[tid]++;
+        @module_tid_depth[str(arg0), tid, @current_depth[tid]] = 1;
+        @tid_depth_module[tid, @current_depth[tid]] = str(arg0);
+        @module_active[tid] = 1;
+    } else {
+        // printf("max depth reached !!, profiling results will not be accurate, you may want to increase the depth or use bcc version\n.")
+    }
+}
+
+usdt:/workspace/Python-3.10.0/python:function__return {
+    if (@current_depth[tid] > 0) {
+        if (@module_tid_depth[str(arg0), tid, @current_depth[tid]]) {
+            delete(@module_tid_depth[str(arg0), tid, @current_depth[tid]]);
+            delete(@tid_depth_module[tid, @current_depth[tid]]);
+            @current_depth[tid]--;
+            if (@current_depth[tid] == 0) {
+                delete(@module_active[tid]);
+                delete(@current_depth[tid]);
+            }
+        }
+    }
+}
+
+tracepoint:raw_syscalls:sys_enter {
+    if(@module_active[tid]){
+        $i = 1;
+        if( @current_depth[tid] > 0){
+         //iteration count should be statically determined
+            while ($i < 100) {
+                 if ($i > @current_depth[tid]) {
+                    break;
+                 }
+                 @syscalls[@tid_depth_module[tid, $i], args->id] = count();
+                 $i++;
+           }
+         }
+       }
+    }
+
+END {
+    printf("profiling terminating...\n");
+}

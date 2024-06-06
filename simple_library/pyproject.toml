@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "simple-library"
+version = "0.1.2"
+description = "simple library to test eBPF sandboxing"
+authors = ["MOUAD KONDAH <kondah.mouad@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "<4.0,>=3.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

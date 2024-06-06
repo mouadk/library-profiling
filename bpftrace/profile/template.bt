@@ -1,0 +1,60 @@
+#!/usr/bin/env bpftrace --unsafe
+
+BEGIN {
+    printf("🕵🏻Monitoring initialized. Setting up supervised modules and their allowed system calls...\n");
+    printf("hit Ctrl-C to quit.");
+    	{{supervised_modules}}
+    	{{allowed_syscalls}}
+    @max_depth = 100;
+
+}
+
+usdt:/workspace/Python-3.10.0/python:function__entry {
+    if (@supervised_modules[str(arg0)]) {
+        if (@current_depth[tid] < @max_depth) {
+            @current_depth[tid]++;
+            @module_tid_depth[str(arg0), tid, @current_depth[tid]] = 1;
+            @tid_depth_module[tid, @current_depth[tid]] = str(arg0);
+            @module_active[tid] = 1;
+        }
+    }
+}
+
+usdt:/workspace/Python-3.10.0/python:function__return {
+    if (@current_depth[tid] > 0 && @supervised_modules[str(arg0)]) {
+        if (@module_tid_depth[str(arg0), tid, @current_depth[tid]]) {
+            delete(@module_tid_depth[str(arg0), tid, @current_depth[tid]]);
+            delete(@tid_depth_module[tid, @current_depth[tid]]);
+            @current_depth[tid]--;
+            if (@current_depth[tid] == 0) {
+                delete(@module_active[tid]);
+                delete(@current_depth[tid]);
+            }
+        }
+    }
+}
+
+
+tracepoint:raw_syscalls:sys_enter /comm == "python" && @module_active[tid]/ {
+    $i = 0;
+    //iteration count should be statically determined
+    while ($i < 100) {
+        if (@current_depth[tid] > 0) {
+             // simulate something like strlen
+             if ($i > @current_depth[tid] - 1){
+                    break;
+                 }
+        }
+        if (!@allowed_syscalls[@tid_depth_module[tid, $i], args->id]) {
+            printf("🚫 Blocked unauthorized system call %d for module %s from TID %d \n", args->id, @tid_depth_module[tid, $i], tid);
+            signal("SIGKILL");
+            break;
+            }
+        $i++;
+    }
+}
+
+END {
+    clear(@allowed_syscalls);
+    clear(@supervised_modules);
+}

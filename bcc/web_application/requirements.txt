@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+simple-library
+fastapi
+uvicorn
+sqlalchemy
+passlib
+bcrypt
+python-jose
+flask
